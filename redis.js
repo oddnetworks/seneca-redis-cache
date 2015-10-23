@@ -99,7 +99,9 @@ module.exports = function(options) {
 
 
   seneca.add({role:role,get:'native'},function(args,done){
-    done(null,cache)
+		initRedisConnection(function() {
+    	done(null,cache)
+		});
   })
 
 
