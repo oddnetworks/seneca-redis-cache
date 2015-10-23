@@ -20,29 +20,33 @@ module.exports = function(options) {
   var cache;
 
   cmds.set = function(args, cb) {
-    var key = args.key;
-    var val = JSON.stringify(args.val);
-    cache.set(key, val, function(err, reply) {
-      cb(err, key);
-    });
+		initRedisConnection(function() {
+	    var key = args.key;
+	    var val = JSON.stringify(args.val);
+	    cache.set(key, val, function(err, reply) {
+	      endRedisConnection(cb(err, key));
+	    });
+		});
   };
 
   cmds.get = function(args, cb) {
-    var key = args.key;
-    var val = cache.get(key, function(err, val) {
-      if(err) {
-        cb(err, undefined)
-      } else {
-        try {
-          val = JSON.parse(val)
-        } catch(err) {
-          seneca.log.error(err)
-          err = new Error('Could not retrieve JSON data at key ['+key+']:' + val)
-          return cb(err, val);
-        }
-        cb(undefined, val);
-      }
-    });
+		initRedisConnection(function() {
+	    var key = args.key;
+	    var val = cache.get(key, function(err, val) {
+	      if(err) {
+	        endRedisConnection(cb(err, undefined));
+	      } else {
+	        try {
+	          val = JSON.parse(val)
+	        } catch(err) {
+	          seneca.log.error(err)
+	          err = new Error('Could not retrieve JSON data at key ['+key+']:' + val)
+	          return cb(err, val);
+	        }
+	        endRedisConnection(cb(undefined, val));
+	      }
+	    });
+		});
   };
 
   cmds.add = function(args, cb) {
@@ -57,9 +61,11 @@ module.exports = function(options) {
   };
 
   cmds.delete = function(args, cb) {
-    cache.del(args.key, function(err, reply) {
-      cb(err, args.key);
-    });
+		initRedisConnection(function() {
+	    cache.del(args.key, function(err, reply) {
+	      endRedisConnection(cb(err, args.key));
+	    });
+		});
   };
 
   function incrdecr(kind) {
@@ -83,7 +89,6 @@ module.exports = function(options) {
 
   cmds.incr = incrdecr('incr');
   cmds.decr = incrdecr('decr');
-
   // cache role
   seneca.add({role: role, cmd: 'set'}, cmds.set);
   seneca.add({role: role, cmd: 'get'}, cmds.get);
@@ -98,23 +103,39 @@ module.exports = function(options) {
   })
 
 
-  seneca.add({role: 'seneca', cmd: 'close'}, function(args, cb) {
-    var closer = this
-    cache.quit(function(err){
-      closer.log.error('close-error',e)
-      this.prior(args,cb)
-    });
-  });
+  // seneca.add({role: 'seneca', cmd: 'close'}, function(args, cb) {
+  //   var closer = this
+	// 	cache.end();
+  //   // cache.quit(function(err){
+  //   //   closer.log.error('close-error',e);
+  //      this.prior(args,cb);
+  //   // });
+  // });
 
-
-  seneca.add({init: name}, function(args, done) {
-    cache = redis.createClient(
-      options.redis.port, 
-      options.redis.host, 
+	function initRedisConnection(done) {
+		cache = redis.createClient(
+      options.redis.port,
+      options.redis.host,
       options.redis
     );
     cache.on('connect', done);
     cache.on('error', done);
+	};
+
+	function endRedisConnection(done) {
+		cache.end();
+		done;
+	};
+
+  seneca.add({init: name}, function(args, done) {
+    // cache = redis.createClient(
+    //   options.redis.port,
+    //   options.redis.host,
+    //   options.redis
+    // );
+    // cache.on('connect', done);
+    // cache.on('error', done);
+		return done();
   });
 
 
