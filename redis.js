@@ -36,13 +36,9 @@ module.exports = function(options) {
 	      if(err) {
 	        endRedisConnection(cb(err, undefined));
 	      } else {
-	        try {
-	          val = JSON.parse(val)
-	        } catch(err) {
-	          seneca.log.error(err)
-	          err = new Error('Could not retrieve JSON data at key ['+key+']:' + val)
-	          return cb(err, val);
-	        }
+          if (val) {
+            val = JSON.parse(val)
+          }
 	        endRedisConnection(cb(undefined, val));
 	      }
 	    });
