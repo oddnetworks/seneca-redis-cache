@@ -10,7 +10,8 @@ module.exports = function(options) {
     redis: {
       port: 6379,
       host: '127.0.0.1'
-    }
+    },
+    maxAge: 5 * 60 * 1000
   }, options);
 
   var cmds = {};
@@ -23,7 +24,7 @@ module.exports = function(options) {
 		initRedisConnection(function() {
 	    var key = args.key;
 	    var val = JSON.stringify(args.val);
-	    cache.set(key, val, function(err, reply) {
+	    cache.set(key, val, 'EX', options.maxAge, function(err, reply) {
 	      endRedisConnection(cb(err, key));
 	    });
 		});
@@ -76,7 +77,7 @@ module.exports = function(options) {
           return cb(new Error(kind + ' failed - value for key ' + key + ' is not a number'));
         }
         var newVal = kind === 'decr' ? oldVal - val : oldVal + val;
-        cache.set(key, newVal, function(err, reply) {
+        cache.set(key, newVal, 'EX', options.maxAge, function(err, reply) {
           cb(err, newVal);
         });
       });
@@ -121,7 +122,7 @@ module.exports = function(options) {
 	};
 
 	function endRedisConnection(done) {
-		cache.end();
+		// cache.end();
 		done;
 	};
 
